@@ -2,8 +2,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.BooleanSupplier;
+import java.util.function.IntFunction;
 
 public class Day19 {
     private static final int REGISTER_COUNT = 6;
@@ -28,21 +31,12 @@ public class Day19 {
         System.out.println(sum);
     }
 
-    private static List<String> mockLines() {
-        return List.of("#ip 0",
-                "seti 5 0 1",
-                "seti 6 0 2",
-                "addi 0 1 0",
-                "addr 1 2 3",
-                "setr 1 0 0",
-                "seti 8 0 4",
-                "seti 9 0 5");
-    }
-
     static class Program {
         int ipRegister = 0;
         int[] registers = new int[REGISTER_COUNT];
         List<Instruction> instructions = new ArrayList<>();
+        int breakpoint;
+        BooleanSupplier onBreakpoint;
 
         Program(List<String> lines) {
             for (var line : lines) {
@@ -56,15 +50,20 @@ public class Day19 {
             }
         }
 
+        void setBreakpoint(int breakpoint, BooleanSupplier onBreakpoint) {
+            this.breakpoint = breakpoint;
+            this.onBreakpoint = onBreakpoint;
+        }
+
         int[] execute() {
             while (registers[ipRegister] >= 0 && registers[ipRegister] < instructions.size()) {
-                //System.out.printf("ip=%d %s ", registers[ipRegister], Arrays.toString(registers));
-
                 var instruction = instructions.get(registers[ipRegister]);
-                //System.out.printf("%s %d %d %d ", instruction.mnemonic, instruction.a, instruction.b, instruction.c);
+
+                if (onBreakpoint != null && breakpoint == registers[ipRegister] && onBreakpoint.getAsBoolean()) {
+                    return registers;
+                }
 
                 instruction.execute(registers);
-                //System.out.println(Arrays.toString(registers));
                 registers[ipRegister]++;
             }
 
@@ -87,6 +86,10 @@ public class Day19 {
         }
 
         void execute(int[] registers) {
+            evaluate(registers, mnemonic, c, a, b);
+        }
+
+        static void evaluate(int[] registers, String mnemonic, int c, int a, int b) {
             switch (mnemonic) {
                 case "addr":
                     registers[c] = registers[a] + registers[b];
